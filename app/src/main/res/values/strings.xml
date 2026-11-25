@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">Methaq Cars</string>
+    <string name="search_title">Search Used &amp; Dismantled Cars</string>
+    <string name="vin_hint">Search by model, VIN or spare parts</string>
+    <string name="search_button">Search</string>
+    <string name="home_tab">Home</string>
+    <string name="fav_tab">Favorites</string>
+    <string name="add_tab">Add Car</string>
+    <string name="settings_tab">Settings</string>
+</resources>

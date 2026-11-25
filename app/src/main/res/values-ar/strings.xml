@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">ميثاق للسيارات المشلعة و المستعملة</string>
+    <string name="search_title">البحث عن سيارات مستعملة ومشلعة</string>
+    <string name="vin_hint">ابحث برقم الشاسيه، الموديل أو قطع الغيار...</string>
+    <string name="search_button">بحث</string>
+    <string name="home_tab">الرئيسية</string>
+    <string name="fav_tab">المفضلة</string>
+    <string name="add_tab">إضافة سيارة</string>
+    <string name="settings_tab">الإعدادات</string>
+</resources>
