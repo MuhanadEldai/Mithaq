@@ -2,8 +2,6 @@ package com.muhanad.mithaq
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.content.res.Configuration
-import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -13,6 +11,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.toColorInt
 import com.muhanad.mithaq.ui.main.MainScreen
 import com.muhanad.mithaq.ui.theme.FteshlyTheme
 import com.muhanad.mithaq.util.AppUpdateManagerHelper
@@ -38,12 +37,11 @@ class MainActivity : ComponentActivity() {
         }
 
         val prefs = getSharedPreferences("fattish_li_prefs", MODE_PRIVATE)
-        val currentNightMode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
-        val systemDark = currentNightMode == Configuration.UI_MODE_NIGHT_YES
-        val savedDarkMode = prefs.getBoolean("dark_mode_pref", systemDark)
+        // Default to false (Light Mode) on first time open
+        val savedDarkMode = prefs.getBoolean("dark_mode_pref", false)
 
-        val lightBackgroundColor = Color.parseColor("#E5E4E4")
-        val darkBackgroundColor = Color.parseColor("#121212")
+        val lightBackgroundColor = "#E5E4E4".toColorInt()
+        val darkBackgroundColor = "#121212".toColorInt()
 
         fun applySystemBarColors(isDark: Boolean) {
             enableEdgeToEdge(

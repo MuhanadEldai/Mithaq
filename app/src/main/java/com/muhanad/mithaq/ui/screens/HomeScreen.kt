@@ -1,5 +1,6 @@
 package com.muhanad.mithaq.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,15 +16,18 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.muhanad.mithaq.data.CarCondition
+import com.muhanad.mithaq.R
 import com.muhanad.mithaq.data.CarRepository
 import com.muhanad.mithaq.data.MockCarRepository
 import com.muhanad.mithaq.data.UsedCar
@@ -33,6 +37,12 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(
+    searchQuery: String,
+    onSearchQueryChanged: (String) -> Unit,
+    searchResults: List<UsedCar>,
+    onSearchResultsChanged: (List<UsedCar>) -> Unit,
+    hasSearched: Boolean,
+    onHasSearchedChanged: (Boolean) -> Unit,
     onCarClick: (UsedCar) -> Unit
 ) {
     val context = LocalContext.current
@@ -41,10 +51,7 @@ fun HomeScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
 
     var isConnected by remember { mutableStateOf(NetworkUtils.isNetworkAvailable(context)) }
-    var searchQuery by remember { mutableStateOf("") }
-    var searchResults by remember { mutableStateOf<List<UsedCar>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
-    var hasSearched by remember { mutableStateOf(false) }
     var selectedCar by remember { mutableStateOf<UsedCar?>(null) }
 
     if (selectedCar != null) {
@@ -60,162 +67,209 @@ fun HomeScreen(
         keyboardController?.hide()
         scope.launch {
             isLoading = true
-            hasSearched = true
-            searchResults = repository.searchCarsByName(query)
+            onHasSearchedChanged(true)
+            val results = repository.searchCarsByName(query)
+            onSearchResultsChanged(results)
             isLoading = false
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 16.dp),
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 0.dp, end = 0.dp, top = 0.dp, bottom = 160.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        // Methaq Header Banner Image (Collapses and scrolls up on scroll)
+        item {
+            Image(
+                painter = painterResource(id = R.drawable.methaqheader),
+                contentDescription = "Methaq Header",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp)
+                    .clip(RoundedCornerShape(bottomStart = 26.dp, bottomEnd = 26.dp)),
+                contentScale = ContentScale.Crop
+            )
+        }
+
         // Network Offline & Retry Banner
         if (!isConnected) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-            ) {
-                Row(
+            item {
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(horizontal = 16.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
                 ) {
-                    Text(
-                        text = "لا توجد صلة بالإنترنت",
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Button(
-                        onClick = { isConnected = NetworkUtils.isNetworkAvailable(context) },
-                        shape = RoundedCornerShape(12.dp)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("إعادة المحاولة")
-                    }
-                }
-            }
-        }
-
-        // Header at Top with Info
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                text = "مرحباً بك في ميثاق",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "ابحث عن سيارتك المستعملة أو قطع الغيار بكل سهولة",
-                fontSize = 13.sp,
-                color = Color.Gray
-            )
-        }
-
-        // Search Bar (Search by name e.g. Honda, Toyota...)
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = { searchQuery = it },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("ابحث بالاسم، مثل: هوندا، تويوتا، توسان...") },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-            trailingIcon = {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(end = 8.dp)
-                ) {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = {
-                            searchQuery = ""
-                            searchResults = emptyList()
-                            hasSearched = false
-                            keyboardController?.hide()
-                        }) {
-                            Icon(Icons.Default.Clear, contentDescription = null)
+                        Text(
+                            text = "لا توجد صلة بالإنترنت",
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Button(
+                            onClick = { isConnected = NetworkUtils.isNetworkAvailable(context) },
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("إعادة المحاولة")
                         }
                     }
-                    IconButton(onClick = { performSearch(searchQuery) }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Search", tint = MaterialTheme.colorScheme.primary)
-                    }
                 }
-            },
-            singleLine = true,
-            shape = RoundedCornerShape(26.dp),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-            keyboardActions = KeyboardActions(onSearch = { performSearch(searchQuery) })
-        )
+            }
+        }
+
+        // Header & Search Section
+        item {
+            Column(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                // Header Info
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = "مرحباً بك في ميثاق",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "ابحث عن سيارتك المستعملة بكل سهولة",
+                        fontSize = 13.sp,
+                        color = Color.Gray
+                    )
+                }
+
+                // Search Bar
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = onSearchQueryChanged,
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("ابحث بالاسم، مثل: هوندا، تويوتا، توسان...") },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    trailingIcon = {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(end = 8.dp)
+                        ) {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = {
+                                    onSearchQueryChanged("")
+                                    keyboardController?.hide()
+                                }) {
+                                    Icon(Icons.Default.Clear, contentDescription = null)
+                                }
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(26.dp),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { performSearch(searchQuery) })
+                )
+
+                // Dedicated Search Button below the edit text
+                Button(
+                    onClick = { performSearch(searchQuery) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    shape = RoundedCornerShape(26.dp)
+                ) {
+                    Icon(Icons.Default.Search, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = "بحث", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                }
+
+                // Loading Progress Bar during search
+                if (isLoading) {
+                    LinearProgressIndicator(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(4.dp)
+                            .clip(RoundedCornerShape(2.dp)),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
 
         // Content Area: Empty State on Start vs Loading vs Results
-        if (isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+        if (isLoading && searchResults.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                }
             }
         } else if (!hasSearched) {
-            // Initial State: Do not fetch and show all cars on start
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.padding(32.dp)
+            // Initial State
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 20.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.DirectionsCar,
-                        contentDescription = null,
-                        modifier = Modifier.size(72.dp),
-                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.padding(horizontal = 32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.DirectionsCar,
+                            contentDescription = null,
+                            modifier = Modifier.size(72.dp),
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                        )
+                        Text(
+                            text = "ابحث عن سيارتك المطلوبة",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                        Text(
+                            text = "أدخل اسم الماركة أو السيارة في حقل البحث بالأعلى (مثل: هوندا، تويوتا، لاندكروزر) واضغط بحث للعثور على النتائج المتاحة في قاعدة بيانات ميثاق.",
+                            fontSize = 14.sp,
+                            color = Color.Gray,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+        } else if (searchResults.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 40.dp),
+                    contentAlignment = Alignment.Center
+                ) {
                     Text(
-                        text = "ابحث عن سيارتك أو قطع الغيار المطلوبة",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center
-                    )
-                    Text(
-                        text = "أدخل اسم الماركة أو السيارة في حقل البحث بالأعلى (مثل: هوندا، تويوتا، لاندكروزر) للعثور على النتائج المتاحة في قاعدة بيانات ميثاق.",
-                        fontSize = 14.sp,
+                        text = "لم يتم العثور على سيارات مطابقة لبحثك.",
+                        fontSize = 16.sp,
                         color = Color.Gray,
                         textAlign = TextAlign.Center
                     )
                 }
             }
-        } else if (searchResults.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "لم يتم العثور على سيارات مطابقة لبحثك.",
-                    fontSize = 16.sp,
-                    color = Color.Gray,
-                    textAlign = TextAlign.Center
-                )
-            }
         } else {
-            // Search Results List
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .weight(1f),
-                contentPadding = PaddingValues(bottom = 160.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(searchResults) { car ->
+            // Search Results List with padding
+            item {
+                Spacer(modifier = Modifier.height(4.dp))
+            }
+            items(searchResults) { car ->
+                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
                     CompactCarCard(
                         car = car,
                         onCardClick = { onCarClick(car) },
@@ -233,8 +287,6 @@ fun CompactCarCard(
     onCardClick: () -> Unit,
     onFavoriteClick: () -> Unit
 ) {
-    val conditionColor = if (car.condition == CarCondition.USED) Color(0xFF22C55E) else Color(0xFFF97316)
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -253,7 +305,7 @@ fun CompactCarCard(
             // Thumbnail Image using ShimmerImagePlaceholder
             ShimmerImagePlaceholder(
                 imageUrl = car.imageUrl,
-                contentDescription = car.title,
+                contentDescription = car.name,
                 modifier = Modifier.size(90.dp),
                 cornerRadius = 20.dp
             )
@@ -262,26 +314,22 @@ fun CompactCarCard(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight(),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(end = 4.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Condition Badge
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = conditionColor.copy(alpha = 0.15f)
-                    ) {
-                        Text(
-                            text = car.condition.displayNameAr,
-                            color = conditionColor,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                        )
-                    }
+                    Text(
+                        text = car.name,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f)
+                    )
 
                     // Favorite Button
                     IconButton(
@@ -297,17 +345,10 @@ fun CompactCarCard(
                     }
                 }
 
-                Text(
-                    text = car.title,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1
-                )
-
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(text = car.model, fontSize = 12.sp, color = Color.Gray)
+                    Text(text = "الموديل: ${car.model}", fontSize = 12.sp, color = Color.Gray)
                     Text(text = "•", fontSize = 12.sp, color = Color.Gray)
                     Text(text = car.location, fontSize = 12.sp, color = Color.Gray)
                 }

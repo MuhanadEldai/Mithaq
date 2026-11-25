@@ -15,38 +15,30 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.muhanad.mithaq.data.CarCondition
-import com.muhanad.mithaq.data.MockCarRepository
-import com.muhanad.mithaq.data.UsedCar
-import java.util.UUID
+import com.google.firebase.firestore.FirebaseFirestore
 
 @Composable
 fun AddCarScreen(
     onCarAdded: () -> Unit
 ) {
-    var title by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf("") }
     var model by remember { mutableStateOf("") }
     var price by remember { mutableStateOf("") }
     var location by remember { mutableStateOf("") }
+    var distance by remember { mutableStateOf("") }
+    var gear by remember { mutableStateOf("أوتوماتيك") }
+    var fuel by remember { mutableStateOf("بنزين") }
     var phone by remember { mutableStateOf("") }
-    var condition by remember { mutableStateOf(CarCondition.USED) }
     var showSuccess by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var validationError by remember { mutableStateOf<String?>(null) }
+    var isSubmitting by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 140.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        item {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Icon(Icons.Default.AddBox, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
-                Text(text = "إضافة سيارة للبيع (مستعملة أو مشلعة)", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            }
-        }
-
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -57,10 +49,15 @@ fun AddCarScreen(
                     modifier = Modifier.padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
+                    Text(text = "إضافة سيارة مباشرة إلى قاعدة البيانات", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+
                     OutlinedTextField(
-                        value = title,
-                        onValueChange = { title = it },
-                        label = { Text("اسم السيارة / نوع قطع الغيار") },
+                        value = name,
+                        onValueChange = { 
+                            name = it
+                            validationError = null 
+                        },
+                        label = { Text("اسم السيارة (مطلوب)") },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(20.dp),
                         singleLine = true
@@ -69,7 +66,7 @@ fun AddCarScreen(
                     OutlinedTextField(
                         value = model,
                         onValueChange = { model = it },
-                        label = { Text("الموديل (مثال: 2018)") },
+                        label = { Text("الموديل / سنة الصنع (مثال: 2018)") },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(20.dp),
                         singleLine = true
@@ -77,12 +74,68 @@ fun AddCarScreen(
 
                     OutlinedTextField(
                         value = price,
-                        onValueChange = { price = it },
-                        label = { Text("السعر (مثال: 35,000,000 ج.س)") },
+                        onValueChange = { 
+                            price = it
+                            validationError = null
+                        },
+                        label = { Text("السعر (مطلوب - مثال: 35,000,000 ج.س)") },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(20.dp),
                         singleLine = true
                     )
+
+                    OutlinedTextField(
+                        value = distance,
+                        onValueChange = { distance = it },
+                        label = { Text("الممشى (مثال: 25,000 كم)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        singleLine = true
+                    )
+
+                    // Gear type selection
+                    Text(text = "ناقل الحركة:", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            RadioButton(
+                                selected = gear == "أوتوماتيك",
+                                onClick = { gear = "أوتوماتيك" }
+                            )
+                            Text(text = "أوتوماتيك")
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            RadioButton(
+                                selected = gear == "عادي",
+                                onClick = { gear = "عادي" }
+                            )
+                            Text(text = "عادي")
+                        }
+                    }
+
+                    // Fuel type selection
+                    Text(text = "نوع الوقود:", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            RadioButton(
+                                selected = fuel == "بنزين",
+                                onClick = { fuel = "بنزين" }
+                            )
+                            Text(text = "بنزين")
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            RadioButton(
+                                selected = fuel == "جاز",
+                                onClick = { fuel = "جاز" }
+                            )
+                            Text(text = "جاز")
+                        }
+                    }
 
                     OutlinedTextField(
                         value = location,
@@ -95,82 +148,133 @@ fun AddCarScreen(
 
                     OutlinedTextField(
                         value = phone,
-                        onValueChange = { phone = it },
-                        label = { Text("رقم الواتساب للتواصل (مثال: 0912345678)") },
+                        onValueChange = { 
+                            phone = it
+                            validationError = null
+                        },
+                        label = { Text("رقم الواتساب للتواصل (مطلوب)") },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(20.dp),
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
                     )
+                }
+            }
+        }
 
-                    // Condition Selection
-                    Text(text = "حالة السيارة:", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            RadioButton(
-                                selected = condition == CarCondition.USED,
-                                onClick = { condition = CarCondition.USED }
-                            )
-                            Text(text = "مستعملة")
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            RadioButton(
-                                selected = condition == CarCondition.DISMANTLED,
-                                onClick = { condition = CarCondition.DISMANTLED }
-                            )
-                            Text(text = "مشلعة (قطع غيار)")
-                        }
-                    }
+        if (validationError != null) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Text(
+                        text = validationError!!,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+            }
+        }
+
+        if (errorMessage != null) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Text(
+                        text = "خطأ في الحفظ: $errorMessage",
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(16.dp)
+                    )
                 }
             }
         }
 
         if (showSuccess) {
             item {
-                Text(
-                    text = "تمت إضافة السيارة بنجاح!",
-                    color = Color(0xFF22C55E),
-                    fontWeight = FontWeight.Bold
-                )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFDCFCE7)),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Text(
+                        text = "تمت إضافة السيارة إلى قاعدة البيانات بنجاح! انتقل للرئيسية وابحث بالاسم لعرضها.",
+                        color = Color(0xFF16A34A),
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
             }
         }
 
         item {
             Button(
                 onClick = {
-                    if (title.isNotBlank() && price.isNotBlank() && phone.isNotBlank()) {
-                        val newCar = UsedCar(
-                            id = UUID.randomUUID().toString(),
-                            title = title,
-                            model = model.ifBlank { "غير محدد" },
-                            price = price,
-                            condition = condition,
-                            location = location.ifBlank { "السودان" },
-                            phone = phone,
-                            imageUrl = "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=800&q=80",
-                            isFavorite = false
-                        )
-                        MockCarRepository.addCar(newCar)
-                        showSuccess = true
-                        title = ""
-                        model = ""
-                        price = ""
-                        location = ""
-                        phone = ""
-                        onCarAdded()
+                    validationError = null
+                    errorMessage = null
+                    showSuccess = false
+
+                    if (name.isBlank() || price.isBlank() || phone.isBlank()) {
+                        validationError = "يرجى تعبئة الحقول المطلوبة: (اسم السيارة، السعر، رقم الهاتف)"
+                        return@Button
+                    }
+
+                    isSubmitting = true
+                    val carData = hashMapOf(
+                        "n" to name.trim(),
+                        "mod" to model.ifBlank { "2022" }.trim(),
+                        "pr" to price.trim(),
+                        "loc" to location.ifBlank { "الخرطوم" }.trim(),
+                        "ph" to phone.trim(),
+                        "img" to "https://images.unsplash.com/photo-1590362891991-f776e747a588?auto=format&fit=crop&w=800&q=80",
+                        "dis" to distance.ifBlank { "25,000 كم" }.trim(),
+                        "gear" to gear,
+                        "fuel" to fuel
+                    )
+
+                    try {
+                        FirebaseFirestore.getInstance()
+                            .collection("cars")
+                            .add(carData)
+                            .addOnSuccessListener {
+                                isSubmitting = false
+                                showSuccess = true
+                                name = ""
+                                model = ""
+                                price = ""
+                                location = ""
+                                phone = ""
+                                distance = ""
+                                onCarAdded()
+                            }
+                            .addOnFailureListener { e ->
+                                isSubmitting = false
+                                errorMessage = e.localizedMessage ?: "فشل الاتصال بقاعدة البيانات"
+                            }
+                    } catch (e: Exception) {
+                        isSubmitting = false
+                        errorMessage = e.localizedMessage ?: "حدث خطأ غير متوقع"
                     }
                 },
+                enabled = !isSubmitting,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
                 shape = RoundedCornerShape(26.dp)
             ) {
-                Icon(Icons.Default.AddBox, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(text = "نشر الإعلان", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                if (isSubmitting) {
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                } else {
+                    Icon(Icons.Default.AddBox, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = "حفظ وإضافة مباشرة في Firestore", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                }
             }
         }
     }

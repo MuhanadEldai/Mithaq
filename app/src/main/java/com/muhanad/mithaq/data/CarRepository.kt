@@ -1,65 +1,93 @@
 package com.muhanad.mithaq.data
 
+import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 
 class CarRepository {
-    private val firestore: FirebaseFirestore? = try {
-        FirebaseFirestore.getInstance()
-    } catch (e: Exception) {
-        null
+
+    private fun getFirestoreInstance(): FirebaseFirestore? {
+        return try {
+            FirebaseFirestore.getInstance()
+        } catch (e: Exception) {
+            Log.e("CarRepository", "Failed to get Firestore instance: ${e.localizedMessage}")
+            null
+        }
     }
 
     suspend fun searchCarsByName(query: String): List<UsedCar> {
         val trimmedQuery = query.trim().lowercase()
         if (trimmedQuery.isEmpty()) return emptyList()
 
-        // Mock fallback dataset for instant search testing (images stored on Cloudflare R2 / remote storage)
-        val mockDatabase = listOf(
-            UsedCar("1", "هيونداي النترا مستعملة نظيفة", "2019", "22,000,000 ج.س", CarCondition.USED, "الخرطوم", "0912345678", "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80", false),
-            UsedCar("2", "هيونداي توسان (مشلعة لقطع الغيار)", "2016", "11,500,000 ج.س", CarCondition.DISMANTLED, "أمدرمان", "0923456789", "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=800&q=80", false),
-            UsedCar("3", "تويوتا لاندكروزر V8", "2018", "45,000,000 ج.س", CarCondition.USED, "الخرطوم", "0934567890", "https://images.unsplash.com/photo-1590362891991-f776e747a588?auto=format&fit=crop&w=800&q=80", false),
-            UsedCar("4", "تويوتا هايلكس (دفرنسات ومكينة)", "2015", "16,000,000 ج.س", CarCondition.DISMANTLED, "بورتسودان", "0945678901", "https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=800&q=80", false),
-            UsedCar("5", "نيسان باترول سفاري", "2014", "28,000,000 ج.س", CarCondition.USED, "مدني", "0956789012", "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=800&q=80", false)
-        )
+        val firestore = getFirestoreInstance()
+        if (firestore == null) {
+            Log.e("CarRepository", "Firestore instance is null!")
+            return emptyList()
+        }
 
         return try {
-            if (firestore == null) {
-                return mockDatabase.filter { it.title.lowercase().contains(trimmedQuery) || it.model.contains(trimmedQuery) }
-            }
-
-            // Query Firestore collection "cars"
+            // Fetch real documents from Firestore "cars" collection
             val snapshot = firestore.collection("cars")
                 .get()
                 .await()
 
-            val firestoreCars = snapshot.documents.mapNotNull { doc ->
-                val title = doc.getString("title") ?: return@mapNotNull null
-                val model = doc.getString("model") ?: "2020"
-                val price = doc.getString("price") ?: "0 ج.س"
-                val conditionStr = doc.getString("condition") ?: "USED"
-                val condition = try { CarCondition.valueOf(conditionStr) } catch (e: Exception) { CarCondition.USED }
-                val location = doc.getString("location") ?: "السودان"
-                val phone = doc.getString("phone") ?: "0912345678"
-                val imageUrl = doc.getString("imageUrl") ?: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=800&q=80"
+            Log.d("CarRepository", "Fetched ${snapshot.documents.size} documents from Firestore.")
+
+            val firestoreCars = snapshot.documents.map { doc ->
+                val data = doc.data
+                Log.d("CarRepository", "Doc ID: ${doc.id}, Raw Data: $data")
+
+                val rawName = doc.get("n") ?: doc.get("name") ?: doc.get("title") ?: "سيارة ${doc.id}"
+                val rawModel = doc.get("mod") ?: doc.get("model") ?: "2022"
+                val rawPrice = doc.get("pr") ?: doc.get("price") ?: "0 ج.س"
+                val rawLocation = doc.get("loc") ?: doc.get("location") ?: "السودان"
+                val rawPhone = doc.get("ph") ?: doc.get("phone") ?: "0912345678"
+                val rawImg = doc.get("img") ?: doc.get("imageUrl")
                 
+                val imageUrl = when (rawImg) {
+                    is String -> rawImg
+                    is List<*> -> rawImg.firstOrNull()?.toString() ?: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=800&q=80"
+                    else -> rawImg?.toString() ?: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=800&q=80"
+                }
+
+                val rawDis = doc.get("dis") ?: doc.get("distance") ?: "25,000 كم"
+                val rawGear = doc.get("gear") ?: doc.get("gearType") ?: "أوتوماتيك"
+                val rawFuel = doc.get("fuel") ?: doc.get("fuelType") ?: "بنزين"
+
                 UsedCar(
                     id = doc.id,
-                    title = title,
-                    model = model,
-                    price = price,
-                    condition = condition,
-                    location = location,
-                    phone = phone,
+                    name = rawName.toString(),
+                    model = rawModel.toString(),
+                    price = rawPrice.toString(),
+                    location = rawLocation.toString(),
+                    phone = rawPhone.toString(),
                     imageUrl = imageUrl,
+                    distance = rawDis.toString(),
+                    gear = rawGear.toString(),
+                    fuel = rawFuel.toString(),
                     isFavorite = false
                 )
             }
 
-            val combined = (firestoreCars + mockDatabase).distinctBy { it.id }
-            combined.filter { it.title.lowercase().contains(trimmedQuery) || it.model.contains(trimmedQuery) }
+            val filtered = firestoreCars.filter { car ->
+                val normalizedName = car.name.lowercase().replace("أ", "ا").replace("إ", "ا").replace("آ", "ا")
+                val normalizedQuery = trimmedQuery.replace("أ", "ا").replace("إ", "ا").replace("آ", "ا")
+
+                normalizedName.contains(normalizedQuery) || 
+                car.model.lowercase().contains(normalizedQuery) ||
+                car.location.lowercase().contains(normalizedQuery) ||
+                car.id.lowercase().contains(normalizedQuery)
+            }
+
+            // If exact query filter is empty but Firestore has documents, return all documents
+            if (filtered.isEmpty() && firestoreCars.isNotEmpty()) {
+                firestoreCars
+            } else {
+                filtered
+            }
         } catch (e: Exception) {
-            mockDatabase.filter { it.title.lowercase().contains(trimmedQuery) || it.model.contains(trimmedQuery) }
+            Log.e("CarRepository", "Error searching cars from Firestore", e)
+            emptyList()
         }
     }
 }

@@ -49,6 +49,11 @@ fun MainScreen(
     var selectedCar by remember { mutableStateOf<UsedCar?>(null) }
     var notificationsEnabled by remember { mutableStateOf(true) }
 
+    // Hoisted search state to preserve search query and results when switching tabs
+    var homeSearchQuery by remember { mutableStateOf("") }
+    var homeSearchResults by remember { mutableStateOf<List<UsedCar>>(emptyList()) }
+    var homeHasSearched by remember { mutableStateOf(false) }
+
     // Reset selectedCar when switching tabs
     LaunchedEffect(navController.value) {
         selectedCar = null
@@ -102,20 +107,7 @@ fun MainScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary
-                ),
-                actions = {
-                    if (selectedCar == null) {
-                        IconButton(onClick = {
-                            notificationsEnabled = !notificationsEnabled
-                        }) {
-                            Icon(
-                                imageVector = if (notificationsEnabled) Icons.Default.Notifications else Icons.Default.NotificationsOff,
-                                contentDescription = "Notifications",
-                                tint = Color.White
-                            )
-                        }
-                    }
-                }
+                )
             )
         },
         bottomBar = {
@@ -140,7 +132,7 @@ fun MainScreen(
                                 spotColor = Color.Black.copy(alpha = 0.3f)
                             )
                             .clip(RoundedCornerShape(32.dp)),
-                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                        color = MaterialTheme.colorScheme.surface,
                         tonalElevation = 0.dp
                     ) {
                         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
@@ -245,7 +237,15 @@ fun MainScreen(
                     label = "screenCrossfade"
                 ) { screen ->
                     when (screen) {
-                        is Screen.Home -> HomeScreen(onCarClick = { selectedCar = it })
+                        is Screen.Home -> HomeScreen(
+                            searchQuery = homeSearchQuery,
+                            onSearchQueryChanged = { homeSearchQuery = it },
+                            searchResults = homeSearchResults,
+                            onSearchResultsChanged = { homeSearchResults = it },
+                            hasSearched = homeHasSearched,
+                            onHasSearchedChanged = { homeHasSearched = it },
+                            onCarClick = { selectedCar = it }
+                        )
                         is Screen.Favorites -> FavoritesScreen(onCarClick = { selectedCar = it })
                         is Screen.AddCar -> AddCarScreen(
                             onCarAdded = { navController.value = Screen.Home }
@@ -266,13 +266,13 @@ fun MainScreen(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
-                        .height(170.dp) // <-- 1. INCREASE HEIGHT HERE
+                        .height(170.dp)
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(
                                     Color.Transparent,
-                                    MaterialTheme.colorScheme.background.copy(alpha = 0.9f), // <-- 2. MIDDLE TRANSPARENCY (lower = more transparent)
-                                    MaterialTheme.colorScheme.background.copy(alpha = 1f)  // <-- 3. BOTTOM OPACITY (higher = more solid)
+                                    MaterialTheme.colorScheme.background.copy(alpha = 0.9f),
+                                    MaterialTheme.colorScheme.background.copy(alpha = 1f)
                                 )
                             )
                         )

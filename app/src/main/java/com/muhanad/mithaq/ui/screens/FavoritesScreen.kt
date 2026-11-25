@@ -38,11 +38,6 @@ fun FavoritesScreen(
             .padding(horizontal = 16.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            text = "السيارات المفضلة",
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold
-        )
 
         if (favoriteCars.isEmpty()) {
             Box(

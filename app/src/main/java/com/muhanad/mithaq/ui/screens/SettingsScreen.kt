@@ -1,14 +1,18 @@
 package com.muhanad.mithaq.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -20,21 +24,19 @@ fun SettingsScreen(
     notificationsEnabled: Boolean,
     onNotificationsChanged: (Boolean) -> Unit
 ) {
+    val context = LocalContext.current
+    val adminPhone = "249998989362" // Admin WhatsApp number
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            text = "الإعدادات",
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold
-        )
-
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(26.dp)
+            shape = RoundedCornerShape(26.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 // Language Setting
@@ -95,6 +97,42 @@ fun SettingsScreen(
                         checked = notificationsEnabled,
                         onCheckedChange = onNotificationsChanged
                     )
+                }
+            }
+        }
+
+        // About & Admin Contact Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(26.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(text = "عن التطبيق وتواصل الإدارة", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(
+                    text = "تطبيق ميثاق للسيارات المشلعة والمستعملة - المنصة الأولى لبيع وشراء السيارات وقطع الغيار في السودان.",
+                    fontSize = 13.sp,
+                    color = Color.Gray,
+                    lineHeight = 20.sp
+                )
+
+                Button(
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$adminPhone?text=مرحباً، أردت الاستفسار بخصوص تطبيق ميثاق"))
+                        context.startActivity(intent)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDCFCE7)),
+                    shape = RoundedCornerShape(24.dp)
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null, tint = Color(0xFF16A34A))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(text = "تواصل مع الإدارة عبر واتساب", color = Color(0xFF16A34A), fontWeight = FontWeight.Bold)
                 }
             }
         }

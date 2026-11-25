@@ -5,13 +5,15 @@ import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,13 +25,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImagePainter
-import coil.compose.SubcomposeAsyncImage
-import coil.compose.SubcomposeAsyncImageContent
-import com.muhanad.mithaq.data.CarCondition
-import com.muhanad.mithaq.data.MockCarRepository
 import com.muhanad.mithaq.data.UsedCar
-import com.muhanad.mithaq.util.shimmerBrush
+import com.muhanad.mithaq.util.ShimmerImagePlaceholder
 
 @Composable
 fun CarDetailsScreen(
@@ -37,7 +34,17 @@ fun CarDetailsScreen(
     onBackClick: () -> Unit
 ) {
     val context = LocalContext.current
-    val conditionColor = if (car.condition == CarCondition.USED) Color(0xFF22C55E) else Color(0xFFF97316)
+
+    // Image Gallery list for swiping
+    val carImages = remember(car) {
+        if (car.imageUrl.isNotBlank()) {
+            listOf(car.imageUrl)
+        } else {
+            listOf("https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=800&q=80")
+        }
+    }
+
+    val pagerState = rememberPagerState(pageCount = { carImages.size })
 
     LazyColumn(
         modifier = Modifier
@@ -46,58 +53,45 @@ fun CarDetailsScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            // Main Image Banner using SubcomposeAsyncImage with Shimmer Skeleton Loading Effect
+            // Swiping Image Gallery Banner with proper fitting (16:9 Aspect Ratio)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(240.dp)
+                    .aspectRatio(16f / 9f)
                     .clip(RoundedCornerShape(26.dp))
                     .background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center
             ) {
-                SubcomposeAsyncImage(
-                    model = car.imageUrl,
-                    contentDescription = car.title,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                ) {
-                    val state = painter.state
-                    when (state) {
-                        is AsyncImagePainter.State.Loading -> {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(shimmerBrush())
-                            )
-                        }
-                        is AsyncImagePainter.State.Error -> {
-                            Icon(
-                                imageVector = Icons.Default.BrokenImage,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(36.dp)
-                            )
-                        }
-                        else -> {
-                            SubcomposeAsyncImageContent()
-                        }
-                    }
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize()
+                ) { page ->
+                    ShimmerImagePlaceholder(
+                        imageUrl = carImages[page],
+                        contentDescription = car.name,
+                        modifier = Modifier.fillMaxSize(),
+                        cornerRadius = 26.dp,
+                        contentScale = ContentScale.Crop
+                    )
                 }
 
-                // Image Counter Badge
-                Surface(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(12.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    color = Color.Black.copy(alpha = 0.6f)
-                ) {
-                    Text(
-                        text = "1 / 5 صورة",
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                    )
+                // Dynamic Image Counter Badge
+                if (carImages.size > 1) {
+                    Surface(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(12.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color.Black.copy(alpha = 0.65f)
+                    ) {
+                        Text(
+                            text = "${pagerState.currentPage + 1} / ${carImages.size} صورة",
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                        )
+                    }
                 }
             }
         }
@@ -107,7 +101,8 @@ fun CarDetailsScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(26.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Column(
                     modifier = Modifier.padding(20.dp),
@@ -120,21 +115,21 @@ fun CarDetailsScreen(
                     ) {
                         Surface(
                             shape = RoundedCornerShape(12.dp),
-                            color = conditionColor.copy(alpha = 0.15f)
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                         ) {
                             Text(
-                                text = car.condition.displayNameAr,
-                                color = conditionColor,
+                                text = "معروض للبيع",
+                                color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 12.sp,
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                             )
                         }
-                        Text(text = "رقم الإعلان: MTH-1024", fontSize = 12.sp, color = Color.Gray)
+                        Text(text = "رقم الإعلان: MTH-${car.id.takeLast(4)}", fontSize = 12.sp, color = Color.Gray)
                     }
 
                     Text(
-                        text = "${car.title} ${car.model}",
+                        text = "${car.name} ${car.model}",
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -158,11 +153,12 @@ fun CarDetailsScreen(
         }
 
         item {
-            // Car Specifications Card (مواصفات السيارة)
+            // Car Specifications Card (مواصفات السيارة: سنة الصنع، الممشى، ناقل الحركة، الوقود)
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(26.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Column(
                     modifier = Modifier.padding(20.dp),
@@ -175,7 +171,7 @@ fun CarDetailsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         SpecItem(icon = Icons.Default.CalendarToday, label = "سنة الصنع", value = car.model)
-                        SpecItem(icon = Icons.Default.Speed, label = "الممشى", value = "25,000 كم")
+                        SpecItem(icon = Icons.Default.Speed, label = "الممشى", value = car.distance)
                     }
 
                     HorizontalDivider()
@@ -184,27 +180,28 @@ fun CarDetailsScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        SpecItem(icon = Icons.Default.Settings, label = "ناقل الحركة", value = "أوتوماتيك")
-                        SpecItem(icon = Icons.Default.LocalGasStation, label = "الوقود", value = "بنزين")
+                        SpecItem(icon = Icons.Default.Settings, label = "ناقل الحركة", value = car.gear)
+                        SpecItem(icon = Icons.Default.LocalGasStation, label = "الوقود", value = car.fuel)
                     }
                 }
             }
         }
 
         item {
-            // Ad Description Card (وصف الإعلان)
+            // Ad Description Card (وصف السيارة)
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(26.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Column(
                     modifier = Modifier.padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Text(text = "وصف الإعلان", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text(text = "وصف السيارة", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     Text(
-                        text = "سيارة بحالة ممتازة، استخدام شخصي، نظيفة جداً من الداخل والخارج، كرت مخزن وجاهزة للترخيص والمعاينة متاحة للجادين.",
+                        text = "سيارة بحالة ممتازة، استخدام شخصي، نظيفة جداً من الداخل والخارج، جاهزة للمعاينة ومتاحة للجادين.",
                         fontSize = 14.sp,
                         color = Color.Gray,
                         lineHeight = 22.sp
@@ -214,10 +211,11 @@ fun CarDetailsScreen(
         }
 
         item {
-            // Dual Contact Buttons with Elevation/Shadow
+            // Dual Contact Buttons with Elevation/Shadow & navigationBarsPadding
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .navigationBarsPadding()
                     .padding(vertical = 8.dp)
                     .shadow(elevation = 8.dp, shape = RoundedCornerShape(26.dp)),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -257,7 +255,7 @@ fun CarDetailsScreen(
                     Text(text = "اتصال", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 }
             }
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(40.dp))
         }
     }
 }
