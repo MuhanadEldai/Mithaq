@@ -4,13 +4,13 @@ plugins {
 }
 
 android {
-    namespace = "com.muhanad.fteshly"
+    namespace = "com.muhanad.mithaq"
     compileSdk {
         version = release(37)
     }
 
     defaultConfig {
-        applicationId = "com.muhanad.fteshly"
+        applicationId = "com.muhanad.mithaq"
         minSdk = 24
         targetSdk = 37
         versionCode = 1
@@ -53,9 +53,11 @@ dependencies {
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.messaging)
 
-    // Play In-App Update
+    // Play In-App Update & Review
     implementation(libs.play.app.update)
     implementation(libs.play.app.update.ktx)
+    implementation(libs.play.review)
+    implementation(libs.play.review.ktx)
 
     // Material Icons Extended
     implementation("androidx.compose.material:material-icons-extended")
