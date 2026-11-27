@@ -232,7 +232,11 @@ fun AddCarScreen(
                         "pr" to price.trim(),
                         "loc" to location.ifBlank { "الخرطوم" }.trim(),
                         "ph" to phone.trim(),
-                        "img" to "https://images.unsplash.com/photo-1590362891991-f776e747a588?auto=format&fit=crop&w=800&q=80",
+                        "img" to listOf(
+                            "https://images.unsplash.com/photo-1590362891991-f776e747a588?auto=format&fit=crop&w=800&q=80",
+                            "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=800&q=80",
+                            "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=800&q=80"
+                        ),
                         "dis" to distance.ifBlank { "25,000 كم" }.trim(),
                         "gear" to gear,
                         "fuel" to fuel

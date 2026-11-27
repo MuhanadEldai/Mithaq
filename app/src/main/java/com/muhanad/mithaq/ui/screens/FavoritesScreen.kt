@@ -76,7 +76,7 @@ fun FavoritesScreen(
                     CompactCarCard(
                         car = car,
                         onCardClick = { onCarClick(car) },
-                        onFavoriteClick = { MockCarRepository.toggleFavorite(car.id) }
+                        onFavoriteClick = { MockCarRepository.toggleFavorite(car) }
                     )
                 }
             }

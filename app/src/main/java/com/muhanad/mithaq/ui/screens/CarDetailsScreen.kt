@@ -3,6 +3,7 @@ package com.muhanad.mithaq.ui.screens
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
@@ -12,8 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,6 +25,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.muhanad.mithaq.data.UsedCar
 import com.muhanad.mithaq.util.ShimmerImagePlaceholder
 
@@ -34,17 +36,62 @@ fun CarDetailsScreen(
     onBackClick: () -> Unit
 ) {
     val context = LocalContext.current
+    var isImageZoomed by remember { mutableStateOf(false) }
 
-    // Image Gallery list for swiping
+    // Real multi-image list from Firestore (or fallback list)
     val carImages = remember(car) {
-        if (car.imageUrl.isNotBlank()) {
-            listOf(car.imageUrl)
-        } else {
-            listOf("https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=800&q=80")
-        }
+        if (car.imageUrls.isNotEmpty()) car.imageUrls
+        else listOf("https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=800&q=80")
     }
 
     val pagerState = rememberPagerState(pageCount = { carImages.size })
+
+    // Full Screen Zoom Dialog when image is clicked
+    if (isImageZoomed) {
+        Dialog(
+            onDismissRequest = { isImageZoomed = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
+                    .clickable { isImageZoomed = false },
+                contentAlignment = Alignment.Center
+            ) {
+                val zoomPagerState = rememberPagerState(pageCount = { carImages.size }, initialPage = pagerState.currentPage)
+                HorizontalPager(
+                    state = zoomPagerState,
+                    modifier = Modifier.fillMaxWidth()
+                ) { page ->
+                    ShimmerImagePlaceholder(
+                        imageUrl = carImages[page],
+                        contentDescription = car.name,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(350.dp),
+                        cornerRadius = 0.dp,
+                        contentScale = ContentScale.Fit
+                    )
+                }
+
+                // Close Button
+                IconButton(
+                    onClick = { isImageZoomed = false },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(24.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Close",
+                        tint = Color.White,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+            }
+        }
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -53,29 +100,35 @@ fun CarDetailsScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            // Swiping Image Gallery Banner with proper fitting (16:9 Aspect Ratio)
+            // Swiping Multi-Image Gallery Banner with correct full-width fitting
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(16f / 9f)
+                    .height(240.dp)
                     .clip(RoundedCornerShape(26.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer),
+                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .clickable { isImageZoomed = true },
                 contentAlignment = Alignment.Center
             ) {
                 HorizontalPager(
                     state = pagerState,
                     modifier = Modifier.fillMaxSize()
                 ) { page ->
-                    ShimmerImagePlaceholder(
-                        imageUrl = carImages[page],
-                        contentDescription = car.name,
+                    Box(
                         modifier = Modifier.fillMaxSize(),
-                        cornerRadius = 26.dp,
-                        contentScale = ContentScale.Crop
-                    )
+                        contentAlignment = Alignment.Center
+                    ) {
+                        ShimmerImagePlaceholder(
+                            imageUrl = carImages[page],
+                            contentDescription = car.name,
+                            modifier = Modifier.fillMaxSize(),
+                            cornerRadius = 26.dp,
+                            contentScale = ContentScale.Crop
+                        )
+                    }
                 }
 
-                // Dynamic Image Counter Badge
+                // Dynamic Multi-Image Counter Badge
                 if (carImages.size > 1) {
                     Surface(
                         modifier = Modifier
@@ -153,7 +206,7 @@ fun CarDetailsScreen(
         }
 
         item {
-            // Car Specifications Card (مواصفات السيارة: سنة الصنع، الممشى، ناقل الحركة، الوقود)
+            // Car Specifications Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(26.dp),
@@ -188,7 +241,7 @@ fun CarDetailsScreen(
         }
 
         item {
-            // Ad Description Card (وصف السيارة)
+            // Ad Description Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(26.dp),
@@ -211,7 +264,7 @@ fun CarDetailsScreen(
         }
 
         item {
-            // Dual Contact Buttons with Elevation/Shadow & navigationBarsPadding
+            // Dual Contact Buttons
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

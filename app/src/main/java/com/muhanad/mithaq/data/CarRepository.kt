@@ -42,12 +42,15 @@ class CarRepository {
                 val rawPrice = doc.get("pr") ?: doc.get("price") ?: "0 ج.س"
                 val rawLocation = doc.get("loc") ?: doc.get("location") ?: "السودان"
                 val rawPhone = doc.get("ph") ?: doc.get("phone") ?: "0912345678"
-                val rawImg = doc.get("img") ?: doc.get("imageUrl")
                 
-                val imageUrl = when (rawImg) {
-                    is String -> rawImg
-                    is List<*> -> rawImg.firstOrNull()?.toString() ?: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=800&q=80"
-                    else -> rawImg?.toString() ?: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=800&q=80"
+                // Multi-Images URL handling (List or String or comma-separated)
+                val imgField = doc.get("img") ?: doc.get("images") ?: doc.get("imageUrl")
+                val imageUrls: List<String> = when (imgField) {
+                    is List<*> -> imgField.mapNotNull { it?.toString() }.filter { it.isNotBlank() }
+                    is String -> if (imgField.contains(",")) imgField.split(",").map { it.trim() } else if (imgField.isNotBlank()) listOf(imgField) else emptyList()
+                    else -> emptyList()
+                }.ifEmpty {
+                    listOf("https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=800&q=80")
                 }
 
                 val rawDis = doc.get("dis") ?: doc.get("distance") ?: "25,000 كم"
@@ -61,7 +64,7 @@ class CarRepository {
                     price = rawPrice.toString(),
                     location = rawLocation.toString(),
                     phone = rawPhone.toString(),
-                    imageUrl = imageUrl,
+                    imageUrls = imageUrls,
                     distance = rawDis.toString(),
                     gear = rawGear.toString(),
                     fuel = rawFuel.toString(),
@@ -79,7 +82,6 @@ class CarRepository {
                 car.id.lowercase().contains(normalizedQuery)
             }
 
-            // If exact query filter is empty but Firestore has documents, return all documents
             if (filtered.isEmpty() && firestoreCars.isNotEmpty()) {
                 firestoreCars
             } else {

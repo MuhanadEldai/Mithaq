@@ -12,6 +12,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.toColorInt
+import com.muhanad.mithaq.data.MockCarRepository
 import com.muhanad.mithaq.ui.main.MainScreen
 import com.muhanad.mithaq.ui.theme.FteshlyTheme
 import com.muhanad.mithaq.util.AppUpdateManagerHelper
@@ -28,6 +29,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Initialize MockCarRepository with context for persistent favorites
+        MockCarRepository.init(this)
 
         // Request POST_NOTIFICATIONS permission on Android 13+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

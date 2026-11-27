@@ -9,7 +9,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
@@ -69,6 +68,7 @@ fun HomeScreen(
             isLoading = true
             onHasSearchedChanged(true)
             val results = repository.searchCarsByName(query)
+            MockCarRepository.updateCarList(results)
             onSearchResultsChanged(results)
             isLoading = false
         }
@@ -269,11 +269,13 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(4.dp))
             }
             items(searchResults) { car ->
+                // Check current favorite state from MockCarRepository
+                val currentCar = MockCarRepository.cars.find { it.id == car.id } ?: car
                 Box(modifier = Modifier.padding(horizontal = 16.dp)) {
                     CompactCarCard(
-                        car = car,
-                        onCardClick = { onCarClick(car) },
-                        onFavoriteClick = { MockCarRepository.toggleFavorite(car.id) }
+                        car = currentCar,
+                        onCardClick = { onCarClick(currentCar) },
+                        onFavoriteClick = { MockCarRepository.toggleFavorite(currentCar) }
                     )
                 }
             }
